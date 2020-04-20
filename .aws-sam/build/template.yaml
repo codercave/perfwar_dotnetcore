@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Sample SAM Template for dotnet_test
+
+  '
+Globals:
+  Function:
+    Timeout: 10
+    Environment:
+      Variables:
+        Table:
+          Fn::Select:
+          - 1
+          - Fn::Split:
+            - /
+            - Fn::GetAtt:
+              - MyTable
+              - Arn
+Resources:
+  TestService:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: TestService
+      Handler: PerformanceWars::PerformanceWars.Function::FunctionHandler
+      Runtime: dotnetcore3.1
+      MemorySize: 256
+      ReservedConcurrentExecutions: 10
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - dynamodb:DescribeTable
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+          - dynamodb:Query
+          Resource:
+          - Fn::Sub: ${MyTable.Arn}
+          - Fn::Sub: ${MyTable.Arn}/index/*
+      Events:
+        PostDocument:
+          Type: Api
+          Properties:
+            Path: /hash
+            Method: post
+        GetDocument:
+          Type: Api
+          Properties:
+            Path: /hash
+            Method: get
+  MyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+      - AttributeName: ID
+        KeyType: HASH
+      AttributeDefinitions:
+      - AttributeName: ID
+        AttributeType: S
+      - AttributeName: Hash
+        AttributeType: S
+      GlobalSecondaryIndexes:
+      - IndexName: Hash_Index
+        KeySchema:
+        - AttributeName: Hash
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
